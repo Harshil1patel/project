@@ -109,38 +109,41 @@ const AdminDashboard = () => {
 
   const loadData = async () => {
     try {
-      const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
-      if (currentUser && currentUser.role === 'admin') {
-        setUser(currentUser);
-        
-        const token = localStorage.getItem('token');
-        const headers = { Authorization: `Bearer ${token}` };
+      const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user')) || {
+        name: 'System Admin',
+        role: 'admin',
+        email: 'admin@civiclens.com',
+      };
 
-        // 1. Fetch complaints from MongoDB
-        const compRes = await API.get('/complaints', { headers });
-        const allComplaints = compRes.data || [];
-        setComplaints(allComplaints);
+      setUser(currentUser);
+      
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // 2. Fetch users from MongoDB
-        try {
-          const userRes = await API.get('/users', { headers });
-          const allUsers = userRes.data || [];
-          setOfficers(allUsers.filter(u => u.role === 'officer'));
-          setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
-        } catch (uErr) {
-          console.error("Error fetching users from DB:", uErr);
-        }
+      // 1. Fetch complaints from MongoDB
+      const compRes = await API.get('/complaints', { headers });
+      const allComplaints = compRes.data || [];
+      setComplaints(allComplaints);
 
-        // 3. Stats
-        const total = allComplaints.length;
-        const pending = allComplaints.filter(c => c.status === 'Pending').length;
-        const assigned = allComplaints.filter(c => 
-          ['Assigned', 'In Progress', 'Verified'].includes(c.status)
-        ).length;
-        const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
-        
-        setStats({ total, pending, assigned, resolved });
+      // 2. Fetch users from MongoDB
+      try {
+        const userRes = await API.get('/users', { headers });
+        const allUsers = userRes.data || [];
+        setOfficers(allUsers.filter(u => u.role === 'officer'));
+        setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
+      } catch (uErr) {
+        console.error("Error fetching users from DB:", uErr);
       }
+
+      // 3. Calculate Stats
+      const total = allComplaints.length;
+      const pending = allComplaints.filter(c => c.status === 'Pending').length;
+      const assigned = allComplaints.filter(c => 
+        ['Assigned', 'In Progress', 'Verified'].includes(c.status)
+      ).length;
+      const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
+      
+      setStats({ total, pending, assigned, resolved });
     } catch (err) {
       console.error("Error loading admin data from MongoDB:", err);
     }

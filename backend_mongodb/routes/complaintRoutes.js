@@ -19,8 +19,9 @@ const {
 // Citizen - Create Complaint
 router.post("/", protect, upload.single("image"), createComplaint);
 router.post("/ai", upload.single("image"), createAIComplaint);
-// Anyone logged in - View Complaints
-router.get("/", protect, getComplaints);
+
+// Anyone logged in or viewing dashboard - View Complaints
+router.get("/", optionalProtect, getComplaints);
 
 // Dashboard (Admin Only)
 router.get("/stats", protect, admin, getDashboardStats);
