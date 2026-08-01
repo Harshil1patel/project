@@ -54,7 +54,7 @@ const createAIComplaint = async (req, res) => {
   }
 };
 
-// Get Complaints (Filtered by Citizen if Citizen Role)
+// Get Complaints (Filtered by Citizen if Citizen Role, with populated Citizen & Officer info)
 const getComplaints = async (req, res) => {
   try {
     let query = {};
@@ -62,7 +62,10 @@ const getComplaints = async (req, res) => {
       query = { citizen: req.user.id };
     }
 
-    const complaints = await Complaint.find(query).sort({ createdAt: -1 });
+    const complaints = await Complaint.find(query)
+      .populate("citizen", "name email phone role")
+      .populate("officer", "name email phone role")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(complaints);
 
@@ -76,7 +79,9 @@ const getComplaints = async (req, res) => {
 // Get Single Complaint
 const getComplaintById = async (req, res) => {
   try {
-    const complaint = await Complaint.findById(req.params.id);
+    const complaint = await Complaint.findById(req.params.id)
+      .populate("citizen", "name email phone role")
+      .populate("officer", "name email phone role");
 
     if (!complaint) {
       return res.status(404).json({
