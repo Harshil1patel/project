@@ -64,7 +64,7 @@ const Register = () => {
 
       setIsOtpSent(true);
       setIsSendingOtp(false);
-      setSuccess(`🔐 6-Digit OTP sent to your Email (${formData.email}) and Mobile (${formData.phone})! (Verification Code: ${response.data.otp})`);
+      setSuccess(`📩 6-Digit OTP code sent to your Email (${formData.email}) and Mobile (+91 ${formData.phone})! Please check your SMS / Email inbox.`);
     } catch (err) {
       setIsSendingOtp(false);
       if (err.response) {

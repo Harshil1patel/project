@@ -176,8 +176,7 @@ const sendOTP = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `OTP sent successfully to email (${cleanEmail}) and mobile (${cleanPhone})!`,
-      otp, // returned for verification display
+      message: `OTP sent successfully to email (${cleanEmail}) and mobile (+91 ${cleanPhone})!`,
       email: cleanEmail,
       phone: cleanPhone,
     });
