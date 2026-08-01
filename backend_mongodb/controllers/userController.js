@@ -89,38 +89,38 @@ const otpStore = new Map();
 // ================= SEND OTP =================
 const sendOTP = async (req, res) => {
   try {
-    const { destination, type } = req.body; // type: 'email' or 'phone'
+    const { email, phone } = req.body;
 
-    if (!destination) {
-      return res.status(400).json({ message: "Mobile number or Email address is required." });
+    if (!email || !phone) {
+      return res.status(400).json({ message: "Both Email address and 10-digit Phone number are required to receive OTP." });
     }
 
-    const cleanDest = destination.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
 
-    if (type === "phone") {
-      const phoneRegex = /^[0-9]{10}$/;
-      if (!phoneRegex.test(cleanDest)) {
-        return res.status(400).json({ message: "Please enter a valid 10-digit mobile number." });
-      }
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(cleanDest)) {
-        return res.status(400).json({ message: "Please enter a valid email address." });
-      }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      return res.status(400).json({ message: "Please enter a valid 10-digit mobile number." });
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
 
-    otpStore.set(cleanDest, { otp, expiresAt });
+    const storeKey = `${cleanEmail}_${cleanPhone}`;
+    otpStore.set(storeKey, { otp, expiresAt });
 
     res.status(200).json({
       success: true,
-      message: `OTP sent successfully to ${type === "email" ? "email" : "mobile number"} (${cleanDest})`,
-      otp, // included for verification display
-      destination: cleanDest,
-      type,
+      message: `OTP sent successfully to email (${cleanEmail}) and mobile (${cleanPhone})!`,
+      otp, // included for testing/verification display
+      email: cleanEmail,
+      phone: cleanPhone,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -130,21 +130,24 @@ const sendOTP = async (req, res) => {
 // ================= VERIFY OTP =================
 const verifyOTP = async (req, res) => {
   try {
-    const { destination, otp } = req.body;
+    const { email, phone, otp } = req.body;
 
-    if (!destination || !otp) {
-      return res.status(400).json({ message: "Destination and OTP are required." });
+    if (!email || !phone || !otp) {
+      return res.status(400).json({ message: "Email, Phone number, and OTP code are required." });
     }
 
-    const cleanDest = destination.trim().toLowerCase();
-    const record = otpStore.get(cleanDest);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+    const storeKey = `${cleanEmail}_${cleanPhone}`;
+
+    const record = otpStore.get(storeKey);
 
     if (!record) {
-      return res.status(400).json({ message: "No OTP sent or OTP expired. Please request a new OTP." });
+      return res.status(400).json({ message: "No active OTP found. Please request a new OTP." });
     }
 
     if (Date.now() > record.expiresAt) {
-      otpStore.delete(cleanDest);
+      otpStore.delete(storeKey);
       return res.status(400).json({ message: "OTP has expired. Please request a new OTP." });
     }
 
@@ -153,7 +156,7 @@ const verifyOTP = async (req, res) => {
     }
 
     // Clear OTP after successful verification
-    otpStore.delete(cleanDest);
+    otpStore.delete(storeKey);
 
     res.status(200).json({
       success: true,
