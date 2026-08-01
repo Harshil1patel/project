@@ -83,6 +83,61 @@ const loginUser = async (req, res) => {
   }
 };
 
+const axios = require("axios");
+const nodemailer = require("nodemailer");
+
+// Helper: Send SMS via Fast2SMS API (Indian Mobile Numbers)
+const sendSmsOtp = async (phone, otp) => {
+  if (process.env.FAST2SMS_API_KEY) {
+    try {
+      await axios.get("https://www.fast2sms.com/dev/bulkV2", {
+        headers: { authorization: process.env.FAST2SMS_API_KEY },
+        params: {
+          variables_values: otp,
+          route: "otp",
+          numbers: phone,
+        },
+      });
+      console.log(`📱 Real SMS OTP (${otp}) successfully dispatched to +91 ${phone}`);
+    } catch (err) {
+      console.error("SMS Gateway Error:", err.response?.data || err.message);
+    }
+  } else {
+    console.log(`📱 [SMS Simulation] OTP for +91 ${phone}: ${otp}`);
+  }
+};
+
+// Helper: Send Email via Nodemailer
+const sendEmailOtp = async (email, otp) => {
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: `"CivicLens" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Your CivicLens OTP Verification Code",
+        html: `<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+          <h2 style="color: #48bb78;">CivicLens Verification Code</h2>
+          <p>Your 6-digit verification code is:</p>
+          <h1 style="color: #2f855a; letter-spacing: 4px;">${otp}</h1>
+          <p>This code will expire in 5 minutes. Do not share it with anyone.</p>
+        </div>`,
+      });
+      console.log(`📧 Real Email OTP (${otp}) successfully dispatched to ${email}`);
+    } catch (err) {
+      console.error("Email Dispatch Error:", err.message);
+    }
+  } else {
+    console.log(`📧 [Email Simulation] OTP for ${email}: ${otp}`);
+  }
+};
+
 // In-memory OTP storage: key -> { otp, expiresAt }
 const otpStore = new Map();
 
@@ -115,10 +170,14 @@ const sendOTP = async (req, res) => {
     const storeKey = `${cleanEmail}_${cleanPhone}`;
     otpStore.set(storeKey, { otp, expiresAt });
 
+    // Dispatch SMS & Email asynchronously
+    sendSmsOtp(cleanPhone, otp);
+    sendEmailOtp(cleanEmail, otp);
+
     res.status(200).json({
       success: true,
       message: `OTP sent successfully to email (${cleanEmail}) and mobile (${cleanPhone})!`,
-      otp, // included for testing/verification display
+      otp, // returned for verification display
       email: cleanEmail,
       phone: cleanPhone,
     });
