@@ -65,9 +65,6 @@ const AdminDashboard = () => {
   const [user, setUser] = useState(null);
   const [complaints, setComplaints] = useState([]);
   const [officers, setOfficers] = useState([]);
-  const [citizens, setCitizens] = useState([]);
-  const [selectedOfficerFilter, setSelectedOfficerFilter] = useState('');
-  const [selectedCitizenFilter, setSelectedCitizenFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -102,68 +99,48 @@ const AdminDashboard = () => {
     resolved: 0,
   });
 
-  const filteredComplaints = complaints.filter(c => {
-    const search = searchTerm.toLowerCase();
-    const citizenName = typeof c.citizen === 'object' ? c.citizen?.name || '' : '';
-    const officerName = typeof c.officer === 'object' ? c.officer?.name || '' : '';
-
-    const matchesSearch = 
-      c.title?.toLowerCase().includes(search) ||
-      c.category?.toLowerCase().includes(search) ||
-      c.location?.toLowerCase().includes(search) ||
-      citizenName.toLowerCase().includes(search) ||
-      officerName.toLowerCase().includes(search);
-
-    const cOfficerId = typeof c.officer === 'object' ? c.officer?._id : c.officer;
-    const matchesOfficer = selectedOfficerFilter ? cOfficerId === selectedOfficerFilter : true;
-
-    const cCitizenId = typeof c.citizen === 'object' ? c.citizen?._id : c.citizen;
-    const matchesCitizen = selectedCitizenFilter ? cCitizenId === selectedCitizenFilter : true;
-
-    return matchesSearch && matchesOfficer && matchesCitizen;
-  });
+  const filteredComplaints = complaints.filter(c =>
+    c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const activeComplaints = complaints.filter(c => c.status !== 'Resolved');
   const resolvedComplaints = complaints.filter(c => c.status === 'Resolved');
 
   const loadData = async () => {
     try {
-      const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user')) || {
-        name: 'System Admin',
-        role: 'admin',
-        email: 'admin@civiclens.com',
-      };
+      const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
+      if (currentUser && currentUser.role === 'admin') {
+        setUser(currentUser);
+        
+        const token = localStorage.getItem('token');
+        const headers = { Authorization: `Bearer ${token}` };
 
-      setUser(currentUser);
-      
-      const token = localStorage.getItem('token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        // 1. Fetch complaints from MongoDB
+        const compRes = await API.get('/complaints', { headers });
+        const allComplaints = compRes.data || [];
+        setComplaints(allComplaints);
 
-      // 1. Fetch complaints from MongoDB
-      const compRes = await API.get('/complaints', { headers });
-      const allComplaints = compRes.data || [];
-      setComplaints(allComplaints);
+        // 2. Fetch users from MongoDB
+        try {
+          const userRes = await API.get('/users', { headers });
+          const allUsers = userRes.data || [];
+          setOfficers(allUsers.filter(u => u.role === 'officer'));
+          setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
+        } catch (uErr) {
+          console.error("Error fetching users from DB:", uErr);
+        }
 
-      // 2. Fetch users from MongoDB
-      try {
-        const userRes = await API.get('/users', { headers });
-        const allUsers = userRes.data || [];
-        setOfficers(allUsers.filter(u => u.role === 'officer'));
-        setCitizens(allUsers.filter(u => u.role === 'citizen'));
-        setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
-      } catch (uErr) {
-        console.error("Error fetching users from DB:", uErr);
+        // 3. Stats
+        const total = allComplaints.length;
+        const pending = allComplaints.filter(c => c.status === 'Pending').length;
+        const assigned = allComplaints.filter(c => 
+          ['Assigned', 'In Progress', 'Verified'].includes(c.status)
+        ).length;
+        const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
+        
+        setStats({ total, pending, assigned, resolved });
       }
-
-      // 3. Calculate Stats
-      const total = allComplaints.length;
-      const pending = allComplaints.filter(c => c.status === 'Pending').length;
-      const assigned = allComplaints.filter(c => 
-        ['Assigned', 'In Progress', 'Verified'].includes(c.status)
-      ).length;
-      const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
-      
-      setStats({ total, pending, assigned, resolved });
     } catch (err) {
       console.error("Error loading admin data from MongoDB:", err);
     }
@@ -284,18 +261,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const getOfficerName = (officerVal) => {
-    if (!officerVal) return 'Unassigned';
-    if (typeof officerVal === 'object' && officerVal.name) return officerVal.name;
-    const officer = officers.find(o => o._id === officerVal || o.id === officerVal);
-    return officer ? officer.name : 'Officer';
-  };
-
-  const getCitizenName = (citizenVal) => {
-    if (!citizenVal) return 'Citizen';
-    if (typeof citizenVal === 'object' && citizenVal.name) return `${citizenVal.name} (${citizenVal.email || ''})`;
-    const citizen = citizens.find(c => c._id === citizenVal || c.id === citizenVal);
-    return citizen ? `${citizen.name} (${citizen.email})` : 'Citizen';
+  const getOfficerName = (officerId) => {
+    if (!officerId) return 'Unassigned';
+    const officer = officers.find(o => o._id === officerId || o.id === officerId);
+    return officer ? officer.name : 'Unknown';
   };
 
   // ===== CHART DATA =====
@@ -493,76 +462,22 @@ const AdminDashboard = () => {
         >
           <input
             type="text"
-            placeholder="🔍 Search by title, category, citizen or officer..."
+            placeholder="🔍 Search by title or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
               ...styles.searchInput,
-              width: isMobile ? '100%' : '260px',
+              width: isMobile ? '100%' : 'auto',
               padding: isMobile ? '10px 14px' : '12px 16px',
               fontSize: isMobile ? '14px' : '14px',
             }}
           />
-
-          {/* Filter by Officer */}
-          <select
-            value={selectedOfficerFilter}
-            onChange={(e) => setSelectedOfficerFilter(e.target.value)}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '2px solid var(--border-color, #c6f6d5)',
-              background: 'var(--bg-input, #f0fff4)',
-              color: 'var(--text-primary, #2d3748)',
-              fontWeight: '500',
-              fontSize: isMobile ? '13px' : '14px',
-            }}
-          >
-            <option value="">👮 All Officers</option>
-            {officers.map(o => (
-              <option key={o._id || o.id} value={o._id || o.id}>
-                {o.name} ({o.email})
-              </option>
-            ))}
-          </select>
-
-          {/* Filter by Citizen */}
-          <select
-            value={selectedCitizenFilter}
-            onChange={(e) => setSelectedCitizenFilter(e.target.value)}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '2px solid var(--border-color, #c6f6d5)',
-              background: 'var(--bg-input, #f0fff4)',
-              color: 'var(--text-primary, #2d3748)',
-              fontWeight: '500',
-              fontSize: isMobile ? '13px' : '14px',
-            }}
-          >
-            <option value="">👤 All Citizens</option>
-            {citizens.map(c => (
-              <option key={c._id || c.id} value={c._id || c.id}>
-                {c.name} ({c.email})
-              </option>
-            ))}
-          </select>
-
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <motion.button 
-              whileHover={{ scale: 1.05 }} 
-              whileTap={{ scale: 0.95 }} 
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedOfficerFilter('');
-                setSelectedCitizenFilter('');
-              }} 
-              style={{
-                ...styles.clearBtn,
-                padding: isMobile ? '10px 16px' : '10px 20px',
-                fontSize: isMobile ? '13px' : '14px',
-              }}
-            >
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm('')} style={{
+              ...styles.clearBtn,
+              padding: isMobile ? '10px 16px' : '10px 20px',
+              fontSize: isMobile ? '13px' : '14px',
+            }}>
               Clear
             </motion.button>
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={exportToCSV} style={{
@@ -612,7 +527,6 @@ const AdminDashboard = () => {
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Title</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Category</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Status</th>
-                    <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Citizen</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Officer</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Date</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Actions</th>
@@ -638,9 +552,6 @@ const AdminDashboard = () => {
                         }}>
                           {complaint.status}
                         </span>
-                      </td>
-                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>
-                        👤 {getCitizenName(complaint.citizen)}
                       </td>
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>
                         <motion.button
@@ -721,7 +632,6 @@ const AdminDashboard = () => {
                   <tr>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Title</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Category</th>
-                    <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Citizen</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Officer</th>
                     <th style={{ ...styles.th, fontSize: isMobile ? '12px' : '14px' }}>Date</th>
                   </tr>
@@ -735,8 +645,7 @@ const AdminDashboard = () => {
                     >
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{complaint.title}</td>
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{complaint.category}</td>
-                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>👤 {getCitizenName(complaint.citizen)}</td>
-                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>👮 {getOfficerName(complaint.officer)}</td>
+                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{getOfficerName(complaint.officer)}</td>
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>
                         {new Date(complaint.createdAt).toLocaleDateString()}
                       </td>
