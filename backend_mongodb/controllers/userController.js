@@ -5,9 +5,10 @@ const jwt = require("jsonwebtoken");
 // ================= REGISTER =================
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
+    const cleanEmail = email ? email.toLowerCase().trim() : "";
 
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: cleanEmail });
 
     if (userExists) {
       return res.status(400).json({
@@ -19,8 +20,9 @@ const registerUser = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: cleanEmail,
       password: hashedPassword,
+      role: role || "citizen",
     });
 
     res.status(201).json({
@@ -39,8 +41,9 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const cleanEmail = email ? email.toLowerCase().trim() : "";
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
       return res.status(400).json({
@@ -61,7 +64,7 @@ const loginUser = async (req, res) => {
         id: user._id,
         role: user.role,
       },
-      "civiclens_secret_key",
+      process.env.JWT_SECRET || "civiclens_secret_key",
       {
         expiresIn: "7d",
       }
