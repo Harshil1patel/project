@@ -107,28 +107,42 @@ const AdminDashboard = () => {
   const activeComplaints = complaints.filter(c => c.status !== 'Resolved');
   const resolvedComplaints = complaints.filter(c => c.status === 'Resolved');
 
-  const loadData = () => {
-    const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
-    if (currentUser && currentUser.role === 'admin') {
-      setUser(currentUser);
-      
-      const allComplaints = getComplaints();
-      setComplaints(allComplaints);
-      
-      const allUsers = getUsers();
-      setOfficers(allUsers.filter(u => u.role === 'officer'));
-      
-      // Staff list (officers + admins)
-      setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
-      
-      const total = allComplaints.length;
-      const pending = allComplaints.filter(c => c.status === 'Pending').length;
-      const assigned = allComplaints.filter(c => 
-        ['Assigned', 'In Progress', 'Verified'].includes(c.status)
-      ).length;
-      const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
-      
-      setStats({ total, pending, assigned, resolved });
+  const loadData = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
+      if (currentUser && currentUser.role === 'admin') {
+        setUser(currentUser);
+        
+        const token = localStorage.getItem('token');
+        const headers = { Authorization: `Bearer ${token}` };
+
+        // 1. Fetch complaints from MongoDB
+        const compRes = await API.get('/complaints', { headers });
+        const allComplaints = compRes.data || [];
+        setComplaints(allComplaints);
+
+        // 2. Fetch users from MongoDB
+        try {
+          const userRes = await API.get('/users', { headers });
+          const allUsers = userRes.data || [];
+          setOfficers(allUsers.filter(u => u.role === 'officer'));
+          setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
+        } catch (uErr) {
+          console.error("Error fetching users from DB:", uErr);
+        }
+
+        // 3. Stats
+        const total = allComplaints.length;
+        const pending = allComplaints.filter(c => c.status === 'Pending').length;
+        const assigned = allComplaints.filter(c => 
+          ['Assigned', 'In Progress', 'Verified'].includes(c.status)
+        ).length;
+        const resolved = allComplaints.filter(c => c.status === 'Resolved').length;
+        
+        setStats({ total, pending, assigned, resolved });
+      }
+    } catch (err) {
+      console.error("Error loading admin data from MongoDB:", err);
     }
   };
 
@@ -163,32 +177,35 @@ const AdminDashboard = () => {
   }, []);
 
   // ===== USER MANAGEMENT FUNCTIONS =====
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.name || !newUser.email || !newUser.password) {
       showToast('Please fill all required fields (Name, Email, Password).', 'error');
       return;
     }
-    if (isEmailTaken(newUser.email)) {
-      showToast('This email is already registered.', 'error');
-      return;
+
+    setLoading(true);
+    try {
+      // Create user in MongoDB database with the selected role (officer or admin)
+      await API.post('/users/register', {
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone || '',
+        password: newUser.password,
+        role: newUser.role,
+      });
+
+      showToast(`✅ ${newUser.role.toUpperCase()} account created in MongoDB!`, 'success');
+
+      // Reset form and refresh list from DB
+      setNewUser({ name: '', email: '', phone: '', password: '', role: 'officer' });
+      setShowUserForm(false);
+      await loadData();
+      setLoading(false);
+    } catch (err) {
+      setLoading(false);
+      showToast(err.response?.data?.message || 'Failed to add user to database', 'error');
     }
-    // Add user with the selected role
-    addUser({
-      name: newUser.name,
-      email: newUser.email,
-      phone: newUser.phone || '',
-      password: newUser.password,
-      role: newUser.role,
-    });
-    showToast('✅ User added successfully!', 'success');
-    // Reset form and refresh list
-    setNewUser({ name: '', email: '', phone: '', password: '', role: 'officer' });
-    setShowUserForm(false);
-    // Refresh data
-    const allUsers = getUsers();
-    setStaffUsers(allUsers.filter(u => u.role === 'officer' || u.role === 'admin'));
-    setOfficers(allUsers.filter(u => u.role === 'officer'));
   };
 
   const handleNewUserChange = (e) => {
@@ -202,32 +219,51 @@ const AdminDashboard = () => {
     setShowAssignModal(true);
   };
 
-  const handleAssignFromModal = () => {
+  const handleAssignFromModal = async () => {
     if (!modalComplaintId || !selectedOfficerId) {
       showToast('Please select an officer.', 'error');
       return;
     }
     setLoading(true);
-    updateComplaintStatus(modalComplaintId, 'Assigned', selectedOfficerId);
-    loadData();
-    setLoading(false);
-    setShowAssignModal(false);
-    showToast('✅ Complaint assigned successfully!', 'success');
+    try {
+      const token = localStorage.getItem('token');
+      await API.put(`/complaints/${modalComplaintId}`, {
+        status: 'Assigned',
+        officer: selectedOfficerId,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await loadData();
+      setLoading(false);
+      setShowAssignModal(false);
+      showToast('✅ Complaint assigned successfully!', 'success');
+    } catch (err) {
+      setLoading(false);
+      showToast(err.response?.data?.message || 'Failed to assign complaint', 'error');
+    }
   };
 
-  const handleDelete = (complaintId) => {
+  const handleDelete = async (complaintId) => {
     if (window.confirm('Are you sure you want to delete this complaint?')) {
       setLoading(true);
-      deleteComplaint(complaintId);
-      loadData();
-      setLoading(false);
-      showToast('🗑️ Complaint deleted successfully.', 'success');
+      try {
+        const token = localStorage.getItem('token');
+        await API.delete(`/complaints/${complaintId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        await loadData();
+        setLoading(false);
+        showToast('🗑️ Complaint deleted successfully.', 'success');
+      } catch (err) {
+        setLoading(false);
+        showToast(err.response?.data?.message || 'Failed to delete complaint', 'error');
+      }
     }
   };
 
   const getOfficerName = (officerId) => {
     if (!officerId) return 'Unassigned';
-    const officer = officers.find(o => o.id === officerId);
+    const officer = officers.find(o => o._id === officerId || o.id === officerId);
     return officer ? officer.name : 'Unknown';
   };
 
