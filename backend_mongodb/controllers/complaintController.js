@@ -12,6 +12,7 @@ const createComplaint = async (req, res) => {
       location,
       image: req.file ? req.file.filename : "",
       status: "Pending",
+      citizen: req.user ? req.user.id : null,
     });
 
     res.status(201).json({
@@ -29,7 +30,6 @@ const createComplaint = async (req, res) => {
 // Create Complaint from AI Backend
 const createAIComplaint = async (req, res) => {
   try {
-
     const { title, description, category, location } = req.body;
 
     const complaint = await Complaint.create({
@@ -39,6 +39,7 @@ const createAIComplaint = async (req, res) => {
       location,
       image: req.file ? req.file.filename : "",
       status: "Pending",
+      citizen: req.user ? req.user.id : null,
     });
 
     res.status(201).json({
@@ -47,18 +48,21 @@ const createAIComplaint = async (req, res) => {
     });
 
   } catch (error) {
-
     res.status(500).json({
       message: error.message,
     });
-
   }
 };
 
-// Get All Complaints
+// Get Complaints (Filtered by Citizen if Citizen Role)
 const getComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find().sort({ createdAt: -1 });
+    let query = {};
+    if (req.user && req.user.role === "citizen") {
+      query = { citizen: req.user.id };
+    }
+
+    const complaints = await Complaint.find(query).sort({ createdAt: -1 });
 
     res.status(200).json(complaints);
 

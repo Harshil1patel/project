@@ -41,7 +41,10 @@ const CitizenDashboard = () => {
             },
         });
 
-        const userComplaints = response.data;
+        const allComplaints = response.data || [];
+        const userComplaints = allComplaints.filter(c => 
+          c.citizen === currentUser._id || c.citizen?._id === currentUser._id
+        );
 
         setMyComplaints(userComplaints);
 
