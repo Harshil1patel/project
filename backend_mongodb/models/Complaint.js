@@ -29,9 +29,25 @@ const complaintSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Resolved"],
+      enum: ["Pending", "Verified", "Assigned", "In Progress", "Resolved"],
       default: "Pending",
     },
+
+    officer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    remarks: [
+      {
+        text: String,
+        officer: String,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     citizen: {
       type: mongoose.Schema.Types.ObjectId,

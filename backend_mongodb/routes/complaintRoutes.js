@@ -10,6 +10,7 @@ const {
   createAIComplaint,
   getComplaints,
   getComplaintById,
+  claimComplaint,
   updateComplaintStatus,
   deleteComplaint,
   getDashboardStats,
@@ -27,8 +28,11 @@ router.get("/stats", protect, admin, getDashboardStats);
 // Get Single Complaint
 router.get("/:id", protect, getComplaintById);
 
-// Update Complaint Status (Admin Only)
-router.put("/:id", protect, admin, updateComplaintStatus);
+// Officer Claim Complaint
+router.put("/:id/claim", protect, claimComplaint);
+
+// Update Complaint Status (Officer or Admin)
+router.put("/:id", protect, updateComplaintStatus);
 
 // Delete Complaint (Admin Only)
 router.delete("/:id", protect, admin, deleteComplaint);

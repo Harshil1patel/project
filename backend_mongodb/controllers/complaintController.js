@@ -89,7 +89,35 @@ const getComplaintById = async (req, res) => {
   }
 };
 
-// Update Complaint Status
+// Claim Complaint (Officer assigns complaint to themselves and sets status to In Progress)
+const claimComplaint = async (req, res) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({
+        message: "Complaint Not Found",
+      });
+    }
+
+    complaint.officer = req.user.id;
+    complaint.status = "In Progress";
+
+    await complaint.save();
+
+    res.status(200).json({
+      message: "Complaint Claimed Successfully",
+      complaint,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// Update Complaint Status & Add Remarks
 const updateComplaintStatus = async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
@@ -100,7 +128,17 @@ const updateComplaintStatus = async (req, res) => {
       });
     }
 
-    complaint.status = req.body.status || complaint.status;
+    if (req.body.status) {
+      complaint.status = req.body.status;
+    }
+
+    if (req.body.remark && req.body.remark.trim() !== "") {
+      complaint.remarks.push({
+        text: req.body.remark.trim(),
+        officer: req.user?.name || "Officer",
+        timestamp: new Date(),
+      });
+    }
 
     await complaint.save();
 
@@ -176,6 +214,7 @@ module.exports = {
   createAIComplaint,
   getComplaints,
   getComplaintById,
+  claimComplaint,
   updateComplaintStatus,
   deleteComplaint,
   getDashboardStats,

@@ -58,39 +58,51 @@ const OfficerDashboard = () => {
   const handleClaim = async (complaintId) => {
     if (!user) return;
     setLoading(true);
-    await API.put(
-  `/complaints/${complaintId}/claim`,
-  {},
-  {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  }
-);
-    loadData();
-    setLoading(false);
-    showToast('✅ Complaint claimed successfully!', 'success');
+    try {
+      await API.put(
+        `/complaints/${complaintId}/claim`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      await loadData();
+      setLoading(false);
+      showToast('✅ Complaint claimed successfully!', 'success');
+    } catch (err) {
+      setLoading(false);
+      console.error(err);
+      showToast(err.response?.data?.message || 'Failed to claim complaint', 'error');
+    }
   };
 
   const handleStatusUpdate = async (complaintId, newStatus, remark) => {
     if (!user) return;
     setLoading(true);
-    await API.put(
-  `/complaints/${complaintId}`,
-  {
-    status: newStatus,
-    remark,
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  }
-);
-    loadData();
-    setLoading(false);
-    showToast('✅ Status updated successfully!', 'success');
-    setSelectedComplaint(null);
+    try {
+      await API.put(
+        `/complaints/${complaintId}`,
+        {
+          status: newStatus,
+          remark,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      await loadData();
+      setLoading(false);
+      showToast('✅ Status updated successfully!', 'success');
+      setSelectedComplaint(null);
+    } catch (err) {
+      setLoading(false);
+      console.error(err);
+      showToast(err.response?.data?.message || 'Failed to update status', 'error');
+    }
   };
 
   const handleViewDetails = async (complaintId) => {
@@ -365,8 +377,8 @@ setSelectedComplaint(response.data);
                     fontSize: isMobile ? '16px' : '17px',
                   }}
                   onClick={() => {
-                    const remark = document.getElementById('remarkInput').value;
-                    handleStatusUpdate(selectedcomplaint._id, selectedComplaint.status, remark);
+                    const remark = document.getElementById('remarkInput')?.value || '';
+                    handleStatusUpdate(selectedComplaint._id, selectedComplaint.status, remark);
                   }}
                   disabled={loading}
                 >

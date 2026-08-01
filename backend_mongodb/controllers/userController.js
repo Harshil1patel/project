@@ -170,6 +170,9 @@ const sendOTP = async (req, res) => {
     const storeKey = `${cleanEmail}_${cleanPhone}`;
     otpStore.set(storeKey, { otp, expiresAt });
 
+    const isRealSmsConfigured = Boolean(process.env.FAST2SMS_API_KEY);
+    const isRealEmailConfigured = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+
     // Dispatch SMS & Email asynchronously
     sendSmsOtp(cleanPhone, otp);
     sendEmailOtp(cleanEmail, otp);
@@ -177,6 +180,9 @@ const sendOTP = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `OTP sent successfully to email (${cleanEmail}) and mobile (+91 ${cleanPhone})!`,
+      demoOtp: (isRealSmsConfigured || isRealEmailConfigured) ? null : otp,
+      isRealSmsConfigured,
+      isRealEmailConfigured,
       email: cleanEmail,
       phone: cleanPhone,
     });
