@@ -23,10 +23,12 @@ const Register = () => {
     confirmPassword: '',
   });
 
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [otpMethod, setOtpMethod] = useState('phone'); // 'phone' or 'email'
   const [enteredOtp, setEnteredOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -38,35 +40,80 @@ const Register = () => {
     });
   };
 
-  const handleSendOtp = () => {
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      setError('Please enter a valid 10-digit phone number.');
+  const handleSendOtp = async () => {
+    setError('');
+    setSuccess('');
+    const destination = otpMethod === 'email' ? formData.email : formData.phone;
+
+    if (otpMethod === 'phone') {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(destination)) {
+        setError('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(destination)) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+    }
+
+    setIsSendingOtp(true);
+    try {
+      const response = await API.post("/users/send-otp", {
+        destination,
+        type: otpMethod,
+      });
+
+      setIsOtpSent(true);
+      setIsSendingOtp(false);
+      setSuccess(`🔐 OTP sent to your ${otpMethod === 'email' ? 'email' : 'mobile number'}! (Verification Code: ${response.data.otp})`);
+    } catch (err) {
+      setIsSendingOtp(false);
+      if (err.response) {
+        setError(err.response.data.message);
+      } else {
+        setError("Failed to send OTP. Please check your connection.");
+      }
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setError('');
+    setSuccess('');
+    const destination = otpMethod === 'email' ? formData.email : formData.phone;
+
+    if (!enteredOtp || enteredOtp.trim().length === 0) {
+      setError('Please enter the OTP code.');
       return;
     }
 
-    setError('');
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(otp);
-    setIsOtpSent(true);
-    alert(`📱 Your OTP is: ${otp}\n(Simulating SMS - In production, this would be sent to your phone.)`);
-  };
+    setIsVerifyingOtp(true);
+    try {
+      await API.post("/users/verify-otp", {
+        destination,
+        otp: enteredOtp.trim(),
+      });
 
-  const handleVerifyOtp = () => {
-    if (enteredOtp === generatedOtp) {
       setIsOtpVerified(true);
-      setError('');
-      alert('✅ OTP Verified Successfully! You can now register.');
-    } else {
-      setError('❌ Invalid OTP. Please try again.');
+      setIsVerifyingOtp(false);
+      setSuccess('✅ OTP Verified Successfully! You can now complete your registration.');
+    } catch (err) {
+      setIsVerifyingOtp(false);
+      if (err.response) {
+        setError(err.response.data.message);
+      } else {
+        setError("Invalid OTP. Please check and try again.");
+      }
     }
   };
 
-  const handleSubmit = async(e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!isOtpVerified) {
-      setError('Please verify your phone number with OTP first.');
+      setError(`Please verify your ${otpMethod === 'email' ? 'email address' : 'mobile number'} with OTP first.`);
       return;
     }
 
@@ -86,39 +133,34 @@ const Register = () => {
       return;
     }
 
-    if (isEmailTaken(formData.email)) {
-      setError('This email is already registered. Please login.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-  const response = await API.post("/users/register", {
-    name: formData.name,
-    email: formData.email,
-    password: formData.password,
-  });
+      const response = await API.post("/users/register", {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      });
 
-  console.log(response.data);
+      console.log(response.data);
 
-  setSuccess("Registration successful! Redirecting to login...");
-  setIsLoading(false);
+      setSuccess("Registration successful! Redirecting to login...");
+      setIsLoading(false);
 
-  setTimeout(() => {
-    navigate("/login");
-  }, 2000);
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
 
-} catch (error) {
+    } catch (error) {
 
-  setIsLoading(false);
+      setIsLoading(false);
 
-  if (error.response) {
-    setError(error.response.data.message);
-  } else {
-    setError("Unable to connect to server.");
-  }
+      if (error.response) {
+        setError(error.response.data.message);
+      } else {
+        setError("Unable to connect to server.");
+      }
 
-}
+    }
   };
 
   const backgroundImageUrl =
@@ -260,37 +302,74 @@ const Register = () => {
             />
           </div>
 
+          {/* OTP Verification Method Selector */}
           <div className="form-group" style={{ marginBottom: '18px' }}>
             <label
               style={{
                 display: 'block',
                 fontWeight: '600',
                 color: 'var(--text-primary, #2d3748)',
-                marginBottom: '6px',
+                marginBottom: '8px',
                 fontSize: isMobile ? '13px' : '14px',
                 transition: 'color 0.3s ease',
               }}
             >
-              Email Address
+              Verify Account via OTP
             </label>
-            <input
-              type="email"
-              name="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: isMobile ? '10px 14px' : '12px 16px',
-                border: '2px solid var(--border-color, #e2e8f0)',
-                borderRadius: '12px',
-                fontSize: isMobile ? '13px' : '14px',
-                background: 'var(--bg-input, #f7fafc)',
-                color: 'var(--text-primary, #2d3748)',
-                transition: 'border 0.3s, background 0.3s, color 0.3s',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isOtpVerified) {
+                    setOtpMethod('phone');
+                    setIsOtpSent(false);
+                    setError('');
+                    setSuccess('');
+                  }
+                }}
+                disabled={isOtpVerified}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  border: otpMethod === 'phone' ? '2px solid #48bb78' : '2px solid var(--border-color, #e2e8f0)',
+                  background: otpMethod === 'phone' ? 'rgba(72, 187, 120, 0.12)' : 'var(--bg-input, #f7fafc)',
+                  color: otpMethod === 'phone' ? '#276749' : 'var(--text-primary, #2d3748)',
+                  fontWeight: '600',
+                  fontSize: isMobile ? '12px' : '13px',
+                  cursor: isOtpVerified ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                📱 Mobile OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isOtpVerified) {
+                    setOtpMethod('email');
+                    setIsOtpSent(false);
+                    setError('');
+                    setSuccess('');
+                  }
+                }}
+                disabled={isOtpVerified}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  border: otpMethod === 'email' ? '2px solid #48bb78' : '2px solid var(--border-color, #e2e8f0)',
+                  background: otpMethod === 'email' ? 'rgba(72, 187, 120, 0.12)' : 'var(--bg-input, #f7fafc)',
+                  color: otpMethod === 'email' ? '#276749' : 'var(--text-primary, #2d3748)',
+                  fontWeight: '600',
+                  fontSize: isMobile ? '12px' : '13px',
+                  cursor: isOtpVerified ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                📧 Email OTP
+              </button>
+            </div>
           </div>
 
           <div className="form-group" style={{ marginBottom: '18px' }}>
@@ -304,7 +383,66 @@ const Register = () => {
                 transition: 'color 0.3s ease',
               }}
             >
-              Phone Number
+              Email Address {otpMethod === 'email' && <span style={{ color: '#e53e3e' }}>*</span>}
+            </label>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <input
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={isOtpVerified || (isOtpSent && otpMethod === 'email')}
+                required
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '10px 14px' : '12px 16px',
+                  border: '2px solid var(--border-color, #e2e8f0)',
+                  borderRadius: '12px',
+                  fontSize: isMobile ? '13px' : '14px',
+                  background: 'var(--bg-input, #f7fafc)',
+                  color: 'var(--text-primary, #2d3748)',
+                  transition: 'border 0.3s, background 0.3s, color 0.3s',
+                  minWidth: isMobile ? '100%' : 'auto',
+                }}
+              />
+              {otpMethod === 'email' && (
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={isSendingOtp || isOtpVerified}
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    padding: isMobile ? '10px 14px' : '12px 18px',
+                    background: isOtpVerified ? '#38a169' : '#48bb78',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    cursor: isOtpVerified ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    opacity: (isSendingOtp || isOtpVerified) ? 0.8 : 1,
+                    fontSize: isMobile ? '13px' : '14px',
+                  }}
+                >
+                  {isSendingOtp ? 'Sending...' : isOtpVerified ? 'Verified' : isOtpSent ? 'Resend OTP' : 'Send OTP'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '18px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontWeight: '600',
+                color: 'var(--text-primary, #2d3748)',
+                marginBottom: '6px',
+                fontSize: isMobile ? '13px' : '14px',
+                transition: 'color 0.3s ease',
+              }}
+            >
+              Phone Number {otpMethod === 'phone' && <span style={{ color: '#e53e3e' }}>*</span>}
             </label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
               <input
@@ -313,7 +451,7 @@ const Register = () => {
                 placeholder="9876543210"
                 value={formData.phone}
                 onChange={handleChange}
-                disabled={isOtpSent && !isOtpVerified}
+                disabled={isOtpVerified || (isOtpSent && otpMethod === 'phone')}
                 style={{
                   flex: 1,
                   padding: isMobile ? '10px 14px' : '12px 16px',
@@ -327,26 +465,28 @@ const Register = () => {
                 }}
                 required
               />
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={isOtpSent && !isOtpVerified}
-                style={{
-                  width: isMobile ? '100%' : 'auto',
-                  padding: isMobile ? '10px 14px' : '12px 20px',
-                  background: isOtpVerified ? '#48bb78' : '#48bb78',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  opacity: (isOtpSent && !isOtpVerified) ? 0.7 : 1,
-                  fontSize: isMobile ? '13px' : '14px',
-                }}
-              >
-                {isOtpVerified ? 'Verified' : isOtpSent ? 'Resend OTP' : 'Send OTP'}
-              </button>
+              {otpMethod === 'phone' && (
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={isSendingOtp || isOtpVerified}
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    padding: isMobile ? '10px 14px' : '12px 18px',
+                    background: isOtpVerified ? '#38a169' : '#48bb78',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    cursor: isOtpVerified ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    opacity: (isSendingOtp || isOtpVerified) ? 0.8 : 1,
+                    fontSize: isMobile ? '13px' : '14px',
+                  }}
+                >
+                  {isSendingOtp ? 'Sending...' : isOtpVerified ? 'Verified' : isOtpSent ? 'Resend OTP' : 'Send OTP'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -362,15 +502,15 @@ const Register = () => {
                   transition: 'color 0.3s ease',
                 }}
               >
-                Enter OTP
+                Enter 6-Digit OTP
               </label>
               <div style={{ display: 'flex', gap: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
                 <input
                   type="text"
-                  placeholder="Enter 4-digit OTP"
+                  placeholder="Enter 6-digit OTP code"
                   value={enteredOtp}
                   onChange={(e) => setEnteredOtp(e.target.value)}
-                  maxLength={4}
+                  maxLength={6}
                   style={{
                     flex: 1,
                     padding: isMobile ? '10px 14px' : '12px 16px',
@@ -386,6 +526,7 @@ const Register = () => {
                 <button
                   type="button"
                   onClick={handleVerifyOtp}
+                  disabled={isVerifyingOtp}
                   style={{
                     width: isMobile ? '100%' : 'auto',
                     padding: isMobile ? '10px 14px' : '12px 20px',
@@ -398,7 +539,7 @@ const Register = () => {
                     fontSize: isMobile ? '13px' : '14px',
                   }}
                 >
-                  Verify
+                  {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
                 </button>
               </div>
             </div>
@@ -408,12 +549,19 @@ const Register = () => {
             <div
               style={{
                 color: '#276749',
+                backgroundColor: 'rgba(72, 187, 120, 0.15)',
+                padding: '10px 14px',
+                borderRadius: '10px',
                 fontSize: isMobile ? '13px' : '14px',
                 marginBottom: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 transition: 'color 0.3s ease',
               }}
             >
-              Phone number verified successfully!
+              <span>✅</span> {otpMethod === 'email' ? 'Email Address' : 'Mobile Number'} verified successfully!
             </div>
           )}
 

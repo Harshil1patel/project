@@ -83,7 +83,90 @@ const loginUser = async (req, res) => {
   }
 };
 
+// In-memory OTP storage: key -> { otp, expiresAt }
+const otpStore = new Map();
+
+// ================= SEND OTP =================
+const sendOTP = async (req, res) => {
+  try {
+    const { destination, type } = req.body; // type: 'email' or 'phone'
+
+    if (!destination) {
+      return res.status(400).json({ message: "Mobile number or Email address is required." });
+    }
+
+    const cleanDest = destination.trim().toLowerCase();
+
+    if (type === "phone") {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(cleanDest)) {
+        return res.status(400).json({ message: "Please enter a valid 10-digit mobile number." });
+      }
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanDest)) {
+        return res.status(400).json({ message: "Please enter a valid email address." });
+      }
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
+
+    otpStore.set(cleanDest, { otp, expiresAt });
+
+    res.status(200).json({
+      success: true,
+      message: `OTP sent successfully to ${type === "email" ? "email" : "mobile number"} (${cleanDest})`,
+      otp, // included for verification display
+      destination: cleanDest,
+      type,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ================= VERIFY OTP =================
+const verifyOTP = async (req, res) => {
+  try {
+    const { destination, otp } = req.body;
+
+    if (!destination || !otp) {
+      return res.status(400).json({ message: "Destination and OTP are required." });
+    }
+
+    const cleanDest = destination.trim().toLowerCase();
+    const record = otpStore.get(cleanDest);
+
+    if (!record) {
+      return res.status(400).json({ message: "No OTP sent or OTP expired. Please request a new OTP." });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      otpStore.delete(cleanDest);
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP." });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ message: "Invalid OTP code. Please check and try again." });
+    }
+
+    // Clear OTP after successful verification
+    otpStore.delete(cleanDest);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP Verified Successfully!",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  sendOTP,
+  verifyOTP,
 };
