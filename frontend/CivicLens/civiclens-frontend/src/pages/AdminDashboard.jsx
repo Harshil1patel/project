@@ -535,7 +535,7 @@ const AdminDashboard = () => {
                 <motion.tbody variants={staggerContainer} initial="hidden" animate="visible">
                   {filteredComplaints.filter(c => c.status !== 'Resolved').map((complaint) => (
                     <motion.tr
-                      key={complaint.id}
+                      key={complaint._id || complaint.id}
                       variants={tableRowVariants}
                       whileHover={{ backgroundColor: 'var(--hover-bg, rgba(72, 187, 120, 0.05))' }}
                       style={styles.tr}
@@ -557,7 +557,7 @@ const AdminDashboard = () => {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => openAssignModal(complaint.id, complaint.officerId)}
+                          onClick={() => openAssignModal(complaint._id, complaint.officer)}
                           style={{
                             ...styles.assignButton,
                             fontSize: isMobile ? '12px' : '13px',
@@ -565,7 +565,7 @@ const AdminDashboard = () => {
                             minWidth: isMobile ? '100px' : '150px',
                           }}
                         >
-                          <span>{getOfficerName(complaint.officerId)}</span>
+                          <span>{getOfficerName(complaint.officer)}</span>
                           <span style={{ marginLeft: '6px', fontSize: '14px' }}>▼</span>
                         </motion.button>
                       </td>
@@ -581,7 +581,7 @@ const AdminDashboard = () => {
                             padding: isMobile ? '4px 10px' : '6px 12px',
                             fontSize: isMobile ? '14px' : '16px',
                           }}
-                          onClick={() => handleDelete(complaint.id)}
+                          onClick={() => handleDelete(complaint._id)}
                           disabled={loading}
                         >
                           🗑️
@@ -639,13 +639,13 @@ const AdminDashboard = () => {
                 <motion.tbody variants={staggerContainer} initial="hidden" animate="visible">
                   {resolvedComplaints.map((complaint) => (
                     <motion.tr
-                      key={complaint.id}
+                      key={complaint._id || complaint.id}
                       variants={tableRowVariants}
                       style={styles.tr}
                     >
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{complaint.title}</td>
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{complaint.category}</td>
-                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{getOfficerName(complaint.officerId)}</td>
+                      <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>{getOfficerName(complaint.officer)}</td>
                       <td style={{ ...styles.td, fontSize: isMobile ? '12px' : '14px' }}>
                         {new Date(complaint.createdAt).toLocaleDateString()}
                       </td>
@@ -767,7 +767,7 @@ const AdminDashboard = () => {
                 </thead>
                 <tbody>
                   {staffUsers.map(u => (
-                    <tr key={u.id} style={styles.tr}>
+                    <tr key={u._id || u.id} style={styles.tr}>
                       <td style={styles.td}>{u.name}</td>
                       <td style={styles.td}>{u.email}</td>
                       <td style={styles.td}>{u.phone || '-'}</td>
@@ -825,7 +825,7 @@ const AdminDashboard = () => {
                 >
                   <option value="">Select Officer...</option>
                   {officers.map(o => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
+                    <option key={o._id || o.id} value={o._id || o.id}>{o.name}</option>
                   ))}
                 </select>
 
