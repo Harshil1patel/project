@@ -226,6 +226,11 @@ const verifyOTP = async (req, res) => {
       success: true,
       message: "OTP Verified Successfully!",
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // ================= GET ALL USERS =================
 const getUsers = async (req, res) => {
   try {
