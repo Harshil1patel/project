@@ -2,6 +2,7 @@ import os
 import uuid
 import shutil
 import traceback
+from numpy import rint
 import requests
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -57,7 +58,11 @@ async def predict(image: UploadFile = File(...)):
         print("Image saved:", file_path)
 
         category, confidence, saved_path = predict_image(file_path)
-        
+        print("=" * 50, flush=True)
+        print(f"Prediction: {category}", flush=True)
+        print(f"Confidence: {confidence}", flush=True)
+        print(f"Saved Path: {saved_path}", flush=True)
+        print("=" * 50, flush=True)
         
 
         print("Prediction:", category)
