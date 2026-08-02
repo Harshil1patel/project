@@ -238,12 +238,12 @@ const ReportIssue = () => {
       uploadData.append("image", fileToSend);
 
       const aiResponse = await fetch(
-        "http://127.0.0.1:8000/predict",
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
+  `${import.meta.env.VITE_AI_URL}/predict`,
+  {
+    method: "POST",
+    body: uploadData,
+  }
+);
 
       if (!aiResponse.ok) {
         throw new Error("Prediction Failed");
