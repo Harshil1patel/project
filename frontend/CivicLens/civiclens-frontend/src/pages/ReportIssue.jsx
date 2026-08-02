@@ -236,7 +236,7 @@ const ReportIssue = () => {
 
       const uploadData = new FormData();
       uploadData.append("image", fileToSend);
-
+      console.log("AI URL:", import.meta.env.VITE_AI_URL);
       const aiResponse = await fetch(
   `${import.meta.env.VITE_AI_URL}/predict`,
   {
