@@ -262,22 +262,59 @@ const AdminDashboard = () => {
 
   // ===== CHART DATA =====
   const getCategoryData = () => {
-    const categories = {};
-    complaints.forEach(c => {
-      categories[c.category] = (categories[c.category] || 0) + 1;
-    });
-    return {
-      labels: Object.keys(categories),
-      datasets: [{
-        label: 'Complaints by Category',
-        data: Object.values(categories),
-        backgroundColor: ['#48bb78', '#2f855a', '#ecc94b', '#fc8181', '#4fd1c5', '#9f7aea', '#ed8936'],
-        borderColor: '#fff',
-        borderWidth: 2,
-      }],
-    };
+  const allowed = [
+    "pothole",
+    "garbage",
+    "road_crack",
+    "street_light",
+    "water_leak",
+  ];
+
+  const counts = {
+    pothole: 0,
+    garbage: 0,
+    road_crack: 0,
+    street_light: 0,
+    water_leak: 0,
   };
 
+  complaints.forEach((c) => {
+    const cat = (c.category || "").toLowerCase().trim();
+
+    if (allowed.includes(cat)) {
+      counts[cat]++;
+    }
+  });
+
+  return {
+    labels: [
+      "Pothole",
+      "Garbage",
+      "Road Crack",
+      "Street Light",
+      "Water Leak",
+    ],
+    datasets: [
+      {
+        label: "Complaints by Category",
+        data: [
+          counts.pothole,
+          counts.garbage,
+          counts.road_crack,
+          counts.street_light,
+          counts.water_leak,
+        ],
+        backgroundColor: [
+          "#48bb78",
+          "#ecc94b",
+          "#fc8181",
+          "#2f855a",
+          "#4fd1c5",
+        ],
+      },
+    ],
+  };
+};
   const getStatusData = () => {
     const statusCounts = { Pending: 0, Assigned: 0, 'In Progress': 0, Resolved: 0 };
     complaints.forEach(c => {
