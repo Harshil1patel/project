@@ -287,6 +287,23 @@ const ReportIssue = () => {
       }
 
       const prediction = await aiResponse.json();
+      if (!prediction.success || prediction.confidence < 60) {
+  alert(
+    `❌ Invalid Image!
+
+AI Confidence: ${prediction.confidence}%
+
+Please upload a clear image of:
+• Pothole
+• Garbage
+• Road Crack
+• Water Leak
+• Street Light`
+  );
+
+  setLoading(false);
+  return;
+}
 
       const newComplaint = {
         title: formData.title,
