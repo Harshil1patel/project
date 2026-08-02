@@ -47,12 +47,12 @@ const ReportIssue = () => {
     return user?.id || null;
   };
 
-  // ===== FORM DATA – load from sessionStorage if same user =====
+  // ===== FORM DATA – load from localStorage if same user =====
   const [formData, setFormData] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = sessionStorage.getItem('reportUserId');
+    const savedUserId = localStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = sessionStorage.getItem('reportFormData');
+      const saved = localStorage.getItem('reportFormData');
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -67,9 +67,9 @@ const ReportIssue = () => {
   // ===== IMAGE – stored as Base64 string =====
   const [imageBase64, setImageBase64] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = sessionStorage.getItem('reportUserId');
+    const savedUserId = localStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = sessionStorage.getItem('reportImageBase64');
+      const saved = localStorage.getItem('reportImageBase64');
       if (saved) {
         return saved;
       }
@@ -79,9 +79,9 @@ const ReportIssue = () => {
 
   const [imagePreview, setImagePreview] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = sessionStorage.getItem('reportUserId');
+    const savedUserId = localStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = sessionStorage.getItem('reportImageBase64');
+      const saved = localStorage.getItem('reportImageBase64');
       if (saved) {
         return saved;
       }
@@ -95,21 +95,21 @@ const ReportIssue = () => {
   const saveFormState = () => {
     const currentUserId = getCurrentUserId();
     if (currentUserId) {
-      sessionStorage.setItem('reportUserId', currentUserId);
+      localStorage.setItem('reportUserId', currentUserId);
     }
-    sessionStorage.setItem('reportFormData', JSON.stringify(formData));
+    localStorage.setItem('reportFormData', JSON.stringify(formData));
     if (imageBase64) {
-      sessionStorage.setItem('reportImageBase64', imageBase64);
+      localStorage.setItem('reportImageBase64', imageBase64);
     } else {
-      sessionStorage.removeItem('reportImageBase64');
+      localStorage.removeItem('reportImageBase64');
     }
   };
 
-  // ===== CLEAR SESSIONSTORAGE =====
+  // ===== CLEAR localStorage =====
   const clearFormState = () => {
-    sessionStorage.removeItem('reportFormData');
-    sessionStorage.removeItem('reportImageBase64');
-    sessionStorage.removeItem('reportUserId');
+    localStorage.removeItem('reportFormData');
+    localStorage.removeItem('reportImageBase64');
+    localStorage.removeItem('reportUserId');
   };
 
   // ===== Handle image from camera =====
@@ -122,8 +122,8 @@ const ReportIssue = () => {
           setImagePreview(base64);
           setImageFile(file);
           const currentUserId = getCurrentUserId();
-          if (currentUserId) sessionStorage.setItem('reportUserId', currentUserId);
-          sessionStorage.setItem('reportImageBase64', base64);
+          if (currentUserId) localStorage.setItem('reportUserId', currentUserId);
+          localStorage.setItem('reportImageBase64', base64);
           window.history.replaceState({}, document.title);
         })
         .catch(() => {
@@ -133,16 +133,16 @@ const ReportIssue = () => {
   }, [location]);
   useEffect(() => {
   const currentUserId = getCurrentUserId();
-  const savedUserId = sessionStorage.getItem("reportUserId");
+  const savedUserId = localStorage.getItem("reportUserId");
 
   if (currentUserId && currentUserId === savedUserId) {
-    const savedForm = sessionStorage.getItem("reportFormData");
+    const savedForm = localStorage.getItem("reportFormData");
 
     if (savedForm) {
       setFormData(JSON.parse(savedForm));
     }
 
-    const savedImage = sessionStorage.getItem("reportImageBase64");
+    const savedImage = localStorage.getItem("reportImageBase64");
 
     if (savedImage) {
       setImageBase64(savedImage);
@@ -161,10 +161,10 @@ const ReportIssue = () => {
 
   const currentUserId = getCurrentUserId();
   if (currentUserId) {
-    sessionStorage.setItem("reportUserId", currentUserId);
+    localStorage.setItem("reportUserId", currentUserId);
   }
 
-  sessionStorage.setItem(
+  localStorage.setItem(
     "reportFormData",
     JSON.stringify(updated)
   );
@@ -191,8 +191,8 @@ const ReportIssue = () => {
       setImagePreview(base64);
       setImageFile(file);
       const currentUserId = getCurrentUserId();
-      if (currentUserId) sessionStorage.setItem('reportUserId', currentUserId);
-      sessionStorage.setItem('reportImageBase64', base64);
+      if (currentUserId) localStorage.setItem('reportUserId', currentUserId);
+      localStorage.setItem('reportImageBase64', base64);
     } catch (err) {
       setError('Failed to read image.');
     }
@@ -207,7 +207,7 @@ const ReportIssue = () => {
     setImageBase64(null);
     setImagePreview(null);
     setImageFile(null);
-    sessionStorage.removeItem('reportImageBase64');
+    localStorage.removeItem('reportImageBase64');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -228,7 +228,7 @@ const ReportIssue = () => {
           location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
         };
         setFormData(updated);
-        sessionStorage.setItem('reportFormData', JSON.stringify(updated));
+        localStorage.setItem('reportFormData', JSON.stringify(updated));
         setLoading(false);
         setError('');
         alert('📍 GPS Location captured successfully!');
@@ -318,8 +318,7 @@ await API.post(
 alert("Complaint Submitted Successfully!");
 navigate("/citizen-dashboard");
       clearFormState();
-      alert("Complaint Submitted Successfully!");
-      navigate("/citizen-dashboard");
+      
     } catch (err) {
       console.error(err);
       setError("Prediction failed");
