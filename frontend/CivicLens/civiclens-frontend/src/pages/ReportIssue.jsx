@@ -43,16 +43,16 @@ const ReportIssue = () => {
 
   // ===== Get current user ID =====
   const getCurrentUserId = () => {
-    const user = JSON.parse(localStorage.getItem('civiclens_current_user'));
+    const user = JSON.parse(sessionStorage.getItem('civiclens_current_user'));
     return user?.id || null;
   };
 
-  // ===== FORM DATA – load from localStorage if same user =====
+  // ===== FORM DATA – load from sessionStorage if same user =====
   const [formData, setFormData] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = localStorage.getItem('reportUserId');
+    const savedUserId = sessionStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = localStorage.getItem('reportFormData');
+      const saved = sessionStorage.getItem('reportFormData');
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -67,9 +67,9 @@ const ReportIssue = () => {
   // ===== IMAGE – stored as Base64 string =====
   const [imageBase64, setImageBase64] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = localStorage.getItem('reportUserId');
+    const savedUserId = sessionStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = localStorage.getItem('reportImageBase64');
+      const saved = sessionStorage.getItem('reportImageBase64');
       if (saved) {
         return saved;
       }
@@ -79,9 +79,9 @@ const ReportIssue = () => {
 
   const [imagePreview, setImagePreview] = useState(() => {
     const currentUserId = getCurrentUserId();
-    const savedUserId = localStorage.getItem('reportUserId');
+    const savedUserId = sessionStorage.getItem('reportUserId');
     if (currentUserId && savedUserId === currentUserId) {
-      const saved = localStorage.getItem('reportImageBase64');
+      const saved = sessionStorage.getItem('reportImageBase64');
       if (saved) {
         return saved;
       }
@@ -95,21 +95,21 @@ const ReportIssue = () => {
   const saveFormState = () => {
     const currentUserId = getCurrentUserId();
     if (currentUserId) {
-      localStorage.setItem('reportUserId', currentUserId);
+      sessionStorage.setItem('reportUserId', currentUserId);
     }
-    localStorage.setItem('reportFormData', JSON.stringify(formData));
+    sessionStorage.setItem('reportFormData', JSON.stringify(formData));
     if (imageBase64) {
-      localStorage.setItem('reportImageBase64', imageBase64);
+      sessionStorage.setItem('reportImageBase64', imageBase64);
     } else {
-      localStorage.removeItem('reportImageBase64');
+      sessionStorage.removeItem('reportImageBase64');
     }
   };
 
-  // ===== CLEAR localStorage =====
+  // ===== CLEAR sessionStorage =====
   const clearFormState = () => {
-    localStorage.removeItem('reportFormData');
-    localStorage.removeItem('reportImageBase64');
-    localStorage.removeItem('reportUserId');
+    sessionStorage.removeItem('reportFormData');
+    sessionStorage.removeItem('reportImageBase64');
+    sessionStorage.removeItem('reportUserId');
   };
 
   // ===== Handle image from camera =====
@@ -122,8 +122,8 @@ const ReportIssue = () => {
           setImagePreview(base64);
           setImageFile(file);
           const currentUserId = getCurrentUserId();
-          if (currentUserId) localStorage.setItem('reportUserId', currentUserId);
-          localStorage.setItem('reportImageBase64', base64);
+          if (currentUserId) sessionStorage.setItem('reportUserId', currentUserId);
+          sessionStorage.setItem('reportImageBase64', base64);
           window.history.replaceState({}, document.title);
         })
         .catch(() => {
@@ -133,16 +133,16 @@ const ReportIssue = () => {
   }, [location]);
   useEffect(() => {
   const currentUserId = getCurrentUserId();
-  const savedUserId = localStorage.getItem("reportUserId");
+  const savedUserId = sessionStorage.getItem("reportUserId");
 
   if (currentUserId && currentUserId === savedUserId) {
-    const savedForm = localStorage.getItem("reportFormData");
+    const savedForm = sessionStorage.getItem("reportFormData");
 
     if (savedForm) {
       setFormData(JSON.parse(savedForm));
     }
 
-    const savedImage = localStorage.getItem("reportImageBase64");
+    const savedImage = sessionStorage.getItem("reportImageBase64");
 
     if (savedImage) {
       setImageBase64(savedImage);
@@ -161,10 +161,10 @@ const ReportIssue = () => {
 
   const currentUserId = getCurrentUserId();
   if (currentUserId) {
-    localStorage.setItem("reportUserId", currentUserId);
+    sessionStorage.setItem("reportUserId", currentUserId);
   }
 
-  localStorage.setItem(
+  sessionStorage.setItem(
     "reportFormData",
     JSON.stringify(updated)
   );
@@ -191,8 +191,8 @@ const ReportIssue = () => {
       setImagePreview(base64);
       setImageFile(file);
       const currentUserId = getCurrentUserId();
-      if (currentUserId) localStorage.setItem('reportUserId', currentUserId);
-      localStorage.setItem('reportImageBase64', base64);
+      if (currentUserId) sessionStorage.setItem('reportUserId', currentUserId);
+      sessionStorage.setItem('reportImageBase64', base64);
     } catch (err) {
       setError('Failed to read image.');
     }
@@ -207,7 +207,7 @@ const ReportIssue = () => {
     setImageBase64(null);
     setImagePreview(null);
     setImageFile(null);
-    localStorage.removeItem('reportImageBase64');
+    sessionStorage.removeItem('reportImageBase64');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -228,7 +228,7 @@ const ReportIssue = () => {
           location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
         };
         setFormData(updated);
-        localStorage.setItem('reportFormData', JSON.stringify(updated));
+        sessionStorage.setItem('reportFormData', JSON.stringify(updated));
         setLoading(false);
         setError('');
         alert('📍 GPS Location captured successfully!');
@@ -253,7 +253,7 @@ const ReportIssue = () => {
 
     setLoading(true);
 
-    const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
+    const currentUser = JSON.parse(sessionStorage.getItem('civiclens_current_user'));
     if (!currentUser) {
       setError('Please login first.');
       setLoading(false);
@@ -298,7 +298,7 @@ const ReportIssue = () => {
         createdAt: Date.now(),
       };
 
-const token = localStorage.getItem("token");
+const token = sessionStorage.getItem("token");
 
 await API.post(
   "/complaints/ai",
