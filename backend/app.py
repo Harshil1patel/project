@@ -2,8 +2,6 @@ import os
 import uuid
 import shutil
 import traceback
-from numpy import rint
-import requests
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,8 +31,8 @@ def home():
 
 @app.post("/predict")
 async def predict(image: UploadFile = File(...)):
-    print("===== REQUEST RECEIVED =====")
-    print(image.filename)
+    print("===== REQUEST RECEIVED =====", flush=True)
+    print(image.filename, flush=True)
 
     # Create upload folder
     os.makedirs("upload", exist_ok=True)
@@ -47,31 +45,35 @@ async def predict(image: UploadFile = File(...)):
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
+
     except Exception as e:
-        print("Save Error:", e)
+        print("Save Error:", e, flush=True)
         raise HTTPException(status_code=500, detail=str(e))
 
     # AI Prediction
     try:
 
-        print("=" * 50)
-        print("Image saved:", file_path)
+        print("=" * 50, flush=True)
+        print("Image saved:", file_path, flush=True)
 
         category, confidence, saved_path = predict_image(file_path)
-        print("=" * 50, flush=True)
-        print(f"Prediction: {category}", flush=True)
-        print(f"Confidence: {confidence}", flush=True)
-        print(f"Saved Path: {saved_path}", flush=True)
-        print("=" * 50, flush=True)
-        
 
-        print("Prediction:", category)
-        print("Confidence:", confidence)
-        print("Saved Path:", saved_path)
-        
-        print("=" * 50)
+        print("Prediction:", category, flush=True)
+        print("Confidence:", confidence, flush=True)
+        print("Saved Path:", saved_path, flush=True)
+        print("=" * 50, flush=True)
 
+        # Reject low confidence image
+        if confidence < 60:
+            return {
+                "success": False,
+                "message": "Invalid image. Please upload a clear civic issue image.",
+                "confidence": round(confidence, 2)
+            }
+
+        # Accept valid image
         return {
+            "success": True,
             "message": "Prediction Successful",
             "filename": image.filename,
             "category": category,

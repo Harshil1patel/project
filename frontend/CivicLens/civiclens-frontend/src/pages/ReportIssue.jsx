@@ -271,10 +271,7 @@ const ReportIssue = () => {
       uploadData.append("image", fileToSend);
 
       // AI backend base URL — prefer VITE_AI_URL, fall back to localhost:8000
-      const AI_URL = import.meta.env.VITE_AI_URL || fetch(`${import.meta.env.VITE_AI_URL}/predict`, {
-  method: "POST",
-  body: uploadData,
-});
+      const AI_URL = import.meta.env.VITE_AI_URL || "http://localhost:8000";
       console.log("AI URL:", AI_URL);
 
       const aiResponse = await fetch(
