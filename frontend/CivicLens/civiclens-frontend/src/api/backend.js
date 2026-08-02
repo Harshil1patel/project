@@ -1,7 +1,10 @@
 import axios from "axios";
 
+// Use VITE_API_URL when provided, otherwise fallback to local backend
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL,
 });
 
 export default API;

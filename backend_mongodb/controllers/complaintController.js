@@ -32,12 +32,23 @@ const createAIComplaint = async (req, res) => {
   try {
     const { title, description, category, location } = req.body;
 
+    // Allow AI backend to pass image path and confidence in the request body
+    const imagePath = req.body.image ? req.body.image : (req.file ? req.file.filename : "");
+    const confidence = req.body.confidence ? req.body.confidence : undefined;
+
+    // Log prediction details to server terminal for debugging
+    console.log('=== AI Prediction Received ===');
+    console.log('Category:', category);
+    if (confidence !== undefined) console.log('Confidence:', confidence);
+    console.log('Image path:', imagePath);
+    console.log('=============================');
+
     const complaint = await Complaint.create({
       title,
       description,
       category,
       location,
-      image: req.file ? req.file.filename : "",
+      image: imagePath,
       status: "Pending",
       citizen: req.user ? req.user.id : null,
     });

@@ -43,7 +43,7 @@ const ReportIssue = () => {
 
   // ===== Get current user ID =====
   const getCurrentUserId = () => {
-    const user = JSON.parse(sessionStorage.getItem('civiclens_current_user'));
+    const user = JSON.parse(localStorage.getItem('civiclens_current_user'));
     return user?.id || null;
   };
 
@@ -253,7 +253,7 @@ const ReportIssue = () => {
 
     setLoading(true);
 
-    const currentUser = JSON.parse(sessionStorage.getItem('civiclens_current_user'));
+    const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
     if (!currentUser) {
       setError('Please login first.');
       setLoading(false);
@@ -269,14 +269,18 @@ const ReportIssue = () => {
 
       const uploadData = new FormData();
       uploadData.append("image", fileToSend);
-      console.log("AI URL:", import.meta.env.VITE_AI_URL);
+
+      // AI backend base URL — prefer VITE_AI_URL, fall back to localhost:8000
+      const AI_URL = import.meta.env.VITE_AI_URL || "http://localhost:8000";
+      console.log("AI URL:", AI_URL);
+
       const aiResponse = await fetch(
-  `${import.meta.env.VITE_AI_URL}/predict`,
-  {
-    method: "POST",
-    body: uploadData,
-  }
-);
+        `${AI_URL.replace(/\/$/, '')}/predict`,
+        {
+          method: "POST",
+          body: uploadData,
+        }
+      );
 
       if (!aiResponse.ok) {
         throw new Error("Prediction Failed");
@@ -298,7 +302,7 @@ const ReportIssue = () => {
         createdAt: Date.now(),
       };
 
-const token = sessionStorage.getItem("token");
+const token = localStorage.getItem("token");
 
 await API.post(
   "/complaints/ai",
@@ -306,7 +310,9 @@ await API.post(
     title: newComplaint.title,
     description: newComplaint.description,
     category: newComplaint.category,
-    location: newComplaint.location
+    location: newComplaint.location,
+    image: newComplaint.image,
+    confidence: newComplaint.confidence
   },
   {
     headers: {
