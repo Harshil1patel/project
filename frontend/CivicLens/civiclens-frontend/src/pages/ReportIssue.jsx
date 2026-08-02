@@ -139,6 +139,7 @@ const ReportIssue = () => {
   };
 
   const handleImageUpload = async (e) => {
+    saveFormState();
     const file = e.target.files[0];
     if (!file) return;
 
@@ -398,7 +399,10 @@ navigate("/citizen-dashboard");
               </button>
               <button
                 type="button"
-                onClick={() => fileInputRef.current.click()}
+                onClick={() => {
+                saveFormState();
+                fileInputRef.current.click();
+                }}
                 style={{
                   ...styles.uploadBtn,
                   padding: isMobile ? '10px 16px' : '10px 20px',
