@@ -131,12 +131,44 @@ const ReportIssue = () => {
         });
     }
   }, [location]);
+  useEffect(() => {
+  const currentUserId = getCurrentUserId();
+  const savedUserId = sessionStorage.getItem("reportUserId");
+
+  if (currentUserId && currentUserId === savedUserId) {
+    const savedForm = sessionStorage.getItem("reportFormData");
+
+    if (savedForm) {
+      setFormData(JSON.parse(savedForm));
+    }
+
+    const savedImage = sessionStorage.getItem("reportImageBase64");
+
+    if (savedImage) {
+      setImageBase64(savedImage);
+      setImagePreview(savedImage);
+    }
+  }
+}, []);
 
   const handleChange = (e) => {
-    const updated = { ...formData, [e.target.name]: e.target.value };
-    setFormData(updated);
-    sessionStorage.setItem('reportFormData', JSON.stringify(updated));
+  const updated = {
+    ...formData,
+    [e.target.name]: e.target.value,
   };
+
+  setFormData(updated);
+
+  const currentUserId = getCurrentUserId();
+  if (currentUserId) {
+    sessionStorage.setItem("reportUserId", currentUserId);
+  }
+
+  sessionStorage.setItem(
+    "reportFormData",
+    JSON.stringify(updated)
+  );
+};
 
   const handleImageUpload = async (e) => {
     saveFormState();
