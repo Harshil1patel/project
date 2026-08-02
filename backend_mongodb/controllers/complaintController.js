@@ -131,11 +131,16 @@ const updateComplaintStatus = async (req, res) => {
         message: "Complaint Not Found",
       });
     }
+if (req.body.status) {
+    complaint.status = req.body.status;
+}
 
-    if (req.body.status) {
-      complaint.status = req.body.status;
-    }
-
+if (req.body.officer) {
+    complaint.officer = req.body.officer;
+}
+    if (req.body.officer !== undefined) {
+    complaint.officer = req.body.officer;
+}
     if (req.body.remark && req.body.remark.trim() !== "") {
       complaint.remarks.push({
         text: req.body.remark.trim(),

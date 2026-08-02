@@ -282,6 +282,8 @@ await API.post(
   }
 );
 
+alert("Complaint Submitted Successfully!");
+navigate("/citizen-dashboard");
       clearFormState();
       alert("Complaint Submitted Successfully!");
       navigate("/citizen-dashboard");

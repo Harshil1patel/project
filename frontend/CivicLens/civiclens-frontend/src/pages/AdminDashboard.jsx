@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  getComplaints, 
-  getUsers, 
-  deleteComplaint, 
-  updateComplaintStatus,
-  addUser,
-  isEmailTaken               // <-- new import
-} from '../services/api';
+import API from "../api/backend";
 import Navbar from '../components/layout/Navbar';
 import { showToast } from '../components/common/Toast';
 
