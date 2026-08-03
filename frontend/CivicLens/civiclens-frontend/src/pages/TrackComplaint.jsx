@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getComplaints, addComment, getUserName } from '../services/api';
+import API from "../api/backend";
 import Navbar from '../components/layout/Navbar';
 
 const TrackComplaint = () => {
@@ -17,16 +17,43 @@ const TrackComplaint = () => {
   }, []);
 
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem('civiclens_current_user'));
-    if (currentUser) {
+  const fetchComplaints = async () => {
+    try {
+      const currentUser = JSON.parse(
+        localStorage.getItem("civiclens_current_user")
+      );
+      const token = localStorage.getItem("token");
+
+      if (!currentUser || !token) return;
+
       setUser(currentUser);
       setCurrentUser(currentUser);
-      const allComplaints = getComplaints();
-      const userComplaints = allComplaints.filter(c => c.userId === currentUser.id);
-      userComplaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const response = await API.get("/complaints", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Filter only logged in user's complaints
+      const userComplaints = response.data.filter(
+        (c) =>
+          c.citizen === currentUser._id ||
+          c.citizen?._id === currentUser._id
+      );
+
+      userComplaints.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
       setComplaints(userComplaints);
+    } catch (error) {
+      console.error("Error loading complaints:", error);
     }
-  }, []);
+  };
+
+  fetchComplaints();
+}, []);
 
   const getStatusSteps = (complaint) => {
     const statusOrder = ['Pending', 'Verified', 'Assigned', 'In Progress', 'Resolved'];
